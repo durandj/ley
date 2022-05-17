@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	github.com/fatih/color v1.13.0
+	github.com/go-chi/chi/v5 v5.0.7
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/spf13/cobra v1.4.0
 	go.uber.org/zap v1.21.0

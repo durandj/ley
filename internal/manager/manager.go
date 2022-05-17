@@ -30,7 +30,7 @@ func New(config *configuration.Configuration) (*Server, error) {
 		logger: logger,
 		httpServer: http.Server{
 			Addr:    config.Service.Address(),
-			Handler: nil,
+			Handler: NewController(),
 		},
 	}, nil
 }
