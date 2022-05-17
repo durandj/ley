@@ -18,8 +18,6 @@ type Server struct {
 
 // New creates a service instance from the configuration.
 func New(config *configuration.Configuration) (*Server, error) {
-	fmt.Println(config)
-
 	logger, err := logging.NewZapLogger(
 		config.Service.EnvironmentType,
 		config.Logging.Level.AsAtomicLevel(),
