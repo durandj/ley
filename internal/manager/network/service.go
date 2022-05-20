@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"time"
 
 	"github.com/durandj/ley/internal/manager/errortypes"
 	"github.com/google/uuid"
+	"inet.af/netaddr"
 )
 
 var (
@@ -29,13 +31,19 @@ func NewService() *Service {
 // CreateNetworkOpts is the options required for creating a new
 // network.
 type CreateNetworkOpts struct {
-	Name string
+	Name     string
+	IPv4CIDR *netaddr.IPPrefix
+	IPv6CIDR *netaddr.IPPrefix
 }
 
 // Validate validates that the options which were given are valid.
 func (opts *CreateNetworkOpts) Validate() error {
 	if !networkNameRegex.MatchString(opts.Name) {
 		return fmt.Errorf("Invalid network name '%s'", opts.Name)
+	}
+
+	if opts.IPv4CIDR == nil && opts.IPv6CIDR == nil {
+		return fmt.Errorf("Must have at least one IP range defined")
 	}
 
 	return nil
@@ -56,9 +64,15 @@ func (service *Service) CreateNetwork(
 		}
 	}
 
+	creationTime := time.Now()
+
 	network := Network{
-		id:   uuid.NewString(),
-		name: opts.Name,
+		id:         uuid.NewString(),
+		name:       opts.Name,
+		ipv4CIDR:   opts.IPv4CIDR,
+		ipv6CIDR:   opts.IPv6CIDR,
+		createdOn:  creationTime,
+		modifiedOn: creationTime,
 	}
 
 	service.networks = append(service.networks, network)
