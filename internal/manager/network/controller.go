@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/durandj/ley/internal/manager/errortypes"
+	"github.com/durandj/ley/internal/manager/renderable"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"inet.af/netaddr"
@@ -62,7 +62,7 @@ func (controller *Controller) CreateNetwork(
 	var createNetworkRequest CreateNetworkRequest
 	if err := render.Bind(request, &createNetworkRequest); err != nil {
 		response.WriteHeader(http.StatusBadRequest)
-		_ = render.Render(response, request, &ErrorResponse{
+		_ = render.Render(response, request, &renderable.ErrorResponse{
 			Message: err.Error(),
 		})
 
@@ -83,6 +83,7 @@ func (controller *Controller) CreateNetwork(
 	}
 
 	response.WriteHeader(http.StatusCreated)
+	// TODO: set location header
 	_ = render.Render(response, request, &createNetworkResponse)
 }
 
@@ -141,7 +142,7 @@ func handleError(
 	switch {
 	case errors.As(err, &validationError):
 		response.WriteHeader(http.StatusBadRequest)
-		_ = render.Render(response, request, &ErrorResponse{
+		_ = render.Render(response, request, &renderable.ErrorResponse{
 			Message: validationError.SafeMessage,
 		})
 
@@ -149,7 +150,7 @@ func handleError(
 
 	case errors.As(err, &userError):
 		response.WriteHeader(http.StatusBadRequest)
-		_ = render.Render(response, request, &ErrorResponse{
+		_ = render.Render(response, request, &renderable.ErrorResponse{
 			Message: userError.SafeMessage,
 		})
 
@@ -157,7 +158,7 @@ func handleError(
 
 	case errors.As(err, &systemError):
 		response.WriteHeader(http.StatusInternalServerError)
-		_ = render.Render(response, request, &ErrorResponse{
+		_ = render.Render(response, request, &renderable.ErrorResponse{
 			Message: systemError.SafeMessage,
 		})
 
@@ -165,7 +166,7 @@ func handleError(
 
 	case err != nil:
 		response.WriteHeader(http.StatusInternalServerError)
-		_ = render.Render(response, request, &ErrorResponse{
+		_ = render.Render(response, request, &renderable.ErrorResponse{
 			Message: "Internal server error, please try again later",
 		})
 
@@ -179,8 +180,8 @@ type RenderableNetwork struct {
 	Name       string            `json:"name"`
 	IPv4CIDR   *netaddr.IPPrefix `json:"ipv4CIDR,omitempty"`
 	IPv6CIDR   *netaddr.IPPrefix `json:"ipv6CIDR,omitempty"`
-	CreatedOn  time.Time         `json:"createdOn"`
-	ModifiedOn time.Time         `json:"modifiedOn"`
+	CreatedOn  renderable.Time   `json:"createdOn"`
+	ModifiedOn renderable.Time   `json:"modifiedOn"`
 }
 
 // NewRenderableNetwork creates a new renderable network from a backend
@@ -190,8 +191,8 @@ func NewRenderableNetwork(network *Network) RenderableNetwork {
 		Name:       network.Name(),
 		IPv4CIDR:   network.IPv4CIDR(),
 		IPv6CIDR:   network.IPv6CIDR(),
-		CreatedOn:  network.CreatedOn(),
-		ModifiedOn: network.ModifiedOn(),
+		CreatedOn:  renderable.Time(network.CreatedOn()),
+		ModifiedOn: renderable.Time(network.ModifiedOn()),
 	}
 }
 
@@ -204,31 +205,6 @@ func (renderableNetwork *RenderableNetwork) Render(
 }
 
 var _ render.Renderer = (*RenderableNetwork)(nil)
-
-// RenderableTime makes time values renderable in API responses.
-type RenderableTime time.Time
-
-// MarshalJSON converts a time value into an ISO-8601 string.
-func (renderableTime *RenderableTime) MarshalJSON() ([]byte, error) {
-	stringTime := time.Time(*renderableTime).Format(time.RFC3339)
-
-	return []byte(stringTime), nil
-}
-
-// UnmarshalJSON converts an ISO-8601 time string into a time instance.
-func (renderableTime *RenderableTime) UnmarshalJSON(rawBytes []byte) error {
-	timeValue, err := time.Parse(time.RFC3339, string(rawBytes))
-	if err != nil {
-		return fmt.Errorf("Unable to parse as ISO-8601 time string: %w", err)
-	}
-
-	*renderableTime = RenderableTime(timeValue)
-
-	return nil
-}
-
-var _ json.Marshaler = (*RenderableTime)(nil)
-var _ json.Unmarshaler = (*RenderableTime)(nil)
 
 // RenderableIPPrefix makes an IP CIDR renderable in an API response.
 type RenderableIPPrefix struct {
@@ -254,19 +230,3 @@ func (renderableIPPrefix *RenderableIPPrefix) UnmarshalJSON(rawBytes []byte) err
 
 var _ json.Marshaler = (*RenderableIPPrefix)(nil)
 var _ json.Unmarshaler = (*RenderableIPPrefix)(nil)
-
-// ErrorResponse defines what is response to the client if there's an
-// error.
-type ErrorResponse struct {
-	Message string `json:"message"`
-}
-
-// Render provides a hook to customize the render process.
-func (errorResponse *ErrorResponse) Render(
-	response http.ResponseWriter,
-	request *http.Request,
-) error {
-	return nil
-}
-
-var _ render.Renderer = (*ErrorResponse)(nil)

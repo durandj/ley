@@ -64,7 +64,7 @@ func (service *Service) CreateNetwork(
 		}
 	}
 
-	creationTime := time.Now()
+	creationTime := time.Now().UTC()
 
 	network := Network{
 		id:         uuid.NewString(),

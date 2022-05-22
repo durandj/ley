@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/durandj/ley/internal/manager/network"
+	"github.com/durandj/ley/internal/manager/user"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
@@ -14,6 +15,7 @@ import (
 type Controller struct {
 	router            chi.Router
 	networkController *network.Controller
+	userController    *user.Controller
 }
 
 // NewController sets up a new controller and the required middleware.
@@ -34,13 +36,17 @@ func NewController() *Controller {
 	networkController := &network.Controller{
 		NetworkService: network.NewService(),
 	}
-	router.Route("/network", func(subrouter chi.Router) {
-		networkController.RegisterRoutes(subrouter)
-	})
+	router.Route("/network", networkController.RegisterRoutes)
+
+	userController := &user.Controller{
+		UserService: user.NewService(),
+	}
+	router.Route("/user", userController.RegisterRoutes)
 
 	return &Controller{
 		router:            router,
 		networkController: networkController,
+		userController:    userController,
 	}
 }
 
