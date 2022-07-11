@@ -10,6 +10,7 @@ import (
 type Configuration struct {
 	Service ServiceConfiguration
 	Logging LoggingConfiguration
+	DB      DBConfiguration
 }
 
 // NewFromEnvironment loads configuration from the environment.

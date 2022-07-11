@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/render"
@@ -21,7 +22,9 @@ func (renderableTime *Time) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON converts an ISO-8601 time string into a time instance.
 func (renderableTime *Time) UnmarshalJSON(rawBytes []byte) error {
-	timeValue, err := time.Parse(time.RFC3339, string(rawBytes))
+	cleanedString := strings.Trim(string(rawBytes), "\"")
+
+	timeValue, err := time.Parse(time.RFC3339, cleanedString)
 	if err != nil {
 		return fmt.Errorf("Unable to parse as ISO-8601 time string: %w", err)
 	}

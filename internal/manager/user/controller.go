@@ -18,27 +18,8 @@ type Controller struct {
 // RegisterRoutes adds HTTP routes to the parent router.
 func (controller *Controller) RegisterRoutes(router chi.Router) {
 	router.Post("/", controller.CreateUser)
+	router.Get("/", controller.GetUserByUsername)
 }
-
-// CreateUserRequest holds the request body for creating a new user.
-type CreateUserRequest struct {
-	Name string `json:"name"`
-}
-
-// Bind is a hook into the process for converting an HTTP request body
-// into a request object.
-func (createUserRequest *CreateUserRequest) Bind(request *http.Request) error {
-	return nil
-}
-
-var _ render.Binder = (*CreateUserRequest)(nil)
-
-// CreateUserResponse holds the response object for creating a user user.
-type CreateUserResponse struct {
-	RenderableUser
-}
-
-var _ render.Renderer = (*CreateUserResponse)(nil)
 
 // CreateUser handles requests to create a new user.
 func (controller *Controller) CreateUser(
@@ -75,8 +56,40 @@ func (controller *Controller) CreateUser(
 	}
 
 	response.WriteHeader(http.StatusCreated)
-	// TODO: set location header
 	_ = render.Render(response, request, &createUserResponse)
+}
+
+// GetUserByUsername fetches user information given a username.
+func (controller *Controller) GetUserByUsername(
+	response http.ResponseWriter,
+	request *http.Request,
+) {
+	queryParams := request.URL.Query()
+	username := queryParams.Get("username")
+
+	if username == "" {
+		response.WriteHeader(http.StatusBadRequest)
+		_ = render.Render(response, request, &renderable.ErrorResponse{
+			Message: "Missing query parameter 'username'",
+		})
+
+		return
+	}
+
+	ctx := request.Context()
+
+	user, err := controller.UserService.GetUserByUsername(ctx, username)
+	if err != nil {
+		handleError(response, request, err)
+		return
+	}
+
+	getUserByUsernameResponse := GetUserByUsernameResponse{
+		RenderableUser: NewRenderableUser(user),
+	}
+
+	response.WriteHeader(http.StatusOK)
+	_ = render.Render(response, request, &getUserByUsernameResponse)
 }
 
 func handleError(
@@ -85,6 +98,7 @@ func handleError(
 	err error,
 ) {
 	var validationError errortypes.ValidationError
+	var notFoundError errortypes.NotFoundError
 	var userError errortypes.UserError
 	var systemError errortypes.SystemError
 	switch {
@@ -94,7 +108,11 @@ func handleError(
 			Message: validationError.SafeMessage,
 		})
 
-		return
+	case errors.As(err, &notFoundError):
+		response.WriteHeader(http.StatusNotFound)
+		_ = render.Render(response, request, &renderable.ErrorResponse{
+			Message: notFoundError.SafeMessage,
+		})
 
 	case errors.As(err, &userError):
 		response.WriteHeader(http.StatusBadRequest)
@@ -102,23 +120,17 @@ func handleError(
 			Message: userError.SafeMessage,
 		})
 
-		return
-
 	case errors.As(err, &systemError):
 		response.WriteHeader(http.StatusInternalServerError)
 		_ = render.Render(response, request, &renderable.ErrorResponse{
 			Message: systemError.SafeMessage,
 		})
 
-		return
-
 	case err != nil:
 		response.WriteHeader(http.StatusInternalServerError)
 		_ = render.Render(response, request, &renderable.ErrorResponse{
 			Message: "Internal server error, please try again later",
 		})
-
-		return
 	}
 }
 
@@ -134,7 +146,12 @@ type RenderableUser struct {
 // NewRenderableUser creates a renderable user from a backend user
 // instance.
 func NewRenderableUser(user *User) RenderableUser {
-	return RenderableUser{}
+	return RenderableUser{
+		Name:       user.Username(),
+		Status:     user.Status(),
+		CreatedOn:  renderable.Time(user.CreatedOn()),
+		ModifiedOn: renderable.Time(user.ModifiedOn()),
+	}
 }
 
 // Render provides a hook into the rendering process.

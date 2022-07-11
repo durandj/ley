@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"database/sql"
 	"net/http"
 	"time"
 
@@ -19,7 +20,7 @@ type Controller struct {
 }
 
 // NewController sets up a new controller and the required middleware.
-func NewController() *Controller {
+func NewController(db *sql.DB) *Controller {
 	router := chi.NewRouter()
 
 	router.Use(middleware.RealIP)
@@ -34,12 +35,12 @@ func NewController() *Controller {
 	router.Use(middleware.Heartbeat("/healthcheck"))
 
 	networkController := &network.Controller{
-		NetworkService: network.NewService(),
+		NetworkService: network.NewService(db),
 	}
 	router.Route("/network", networkController.RegisterRoutes)
 
 	userController := &user.Controller{
-		UserService: user.NewService(),
+		UserService: user.NewService(db),
 	}
 	router.Route("/user", userController.RegisterRoutes)
 

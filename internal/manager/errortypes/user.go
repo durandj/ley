@@ -41,3 +41,10 @@ func NewWrappedValidationError(err error, message string, values ...any) Validat
 		},
 	}
 }
+
+// NotFoundError is returned when requested data could not be found.
+type NotFoundError struct {
+	UserError
+}
+
+var _ error = (*NotFoundError)(nil)

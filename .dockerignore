@@ -1,0 +1,12 @@
+/.editorconfig
+/.env
+/.git
+/.gitignore
+/.go-version
+/.golangci.yml
+/.pre-commit-config.yml
+/build
+/Dockerfile
+/docker-compose.yml
+
+*.md

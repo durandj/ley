@@ -26,6 +26,8 @@ func NewRootCommand() *cobra.Command {
 				return fmt.Errorf("Unable to setup server: %w", err)
 			}
 
+			defer server.CleanUp()
+
 			return server.Run(ctx)
 		},
 	}

@@ -1,0 +1,3 @@
+DROP TRIGGER IF EXISTS UsersUpdateModifiedOn ON Users;
+
+DROP TABLE IF EXISTS Users;

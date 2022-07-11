@@ -1,0 +1,4 @@
+hadolint 2.10.0
+gomigrate 4.15.2
+dagger 0.2.22
+golangci-lint 1.46.2

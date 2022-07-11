@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  manager:
+    image: durandj/ley-manager:dev
+    build:
+      context: .
+
+    depends_on:
+      - db
+
+    environment:
+      LEY_MANAGER_SERVICE_HOST: 0.0.0.0
+      LEY_MANAGER_SERVICE_ENVIRONMENT_TYPE: local
+      LEY_MANAGER_LOGGING_LEVEL: INFO
+      LEY_MANAGER_DB_TYPE: postgres
+      LEY_MANAGER_DB_POSTGRES_HOST: db
+      LEY_MANAGER_DB_POSTGRES_ROLE: ley
+      LEY_MANAGER_DB_POSTGRES_PASSWORD: ley
+      LEY_MANAGER_DB_POSTGRES_SSLMODE: disable
+
+    volumes:
+      - type: volume
+        source: manager_data
+        target: /data
+
+    ports:
+      - protocol: tcp
+        target: 8080
+        published: 8080
+
+  db:
+    image: postgres:14.3-alpine
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: ley
+      POSTGRES_PASSWORD: ley
+      POSTGRES_DB: ley
+
+    volumes:
+      - type: volume
+        source: db_data
+        target: /var/lib/postgresql/data
+
+    ports:
+      - protocol: tcp
+        target: 5432
+        published: 5432
+
+volumes:
+  manager_data:
+  db_data:

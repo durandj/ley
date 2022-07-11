@@ -1,6 +1,11 @@
 package user
 
-import "time"
+import (
+	"net/http"
+	"time"
+
+	"github.com/go-chi/render"
+)
 
 // User defines the backend view of what a user is.
 type User struct {
@@ -49,3 +54,40 @@ const (
 	// immutable while in this status.
 	StatusDeactivated Status = "deactivated"
 )
+
+// CreateUserRequest holds the request body for creating a new user.
+type CreateUserRequest struct {
+	Name string `json:"name"`
+}
+
+// SetName sets the name of the user in the creation request and returns
+// an instance of the request object. This can be used as a factory
+// builder style pattern.
+func (createUserRequest *CreateUserRequest) SetName(name string) *CreateUserRequest {
+	createUserRequest.Name = name
+
+	return createUserRequest
+}
+
+// Bind is a hook into the process for converting an HTTP request body
+// into a request object.
+func (createUserRequest *CreateUserRequest) Bind(request *http.Request) error {
+	return nil
+}
+
+var _ render.Binder = (*CreateUserRequest)(nil)
+
+// CreateUserResponse holds the response object for creating a user user.
+type CreateUserResponse struct {
+	RenderableUser
+}
+
+var _ render.Renderer = (*CreateUserResponse)(nil)
+
+// GetUserByUsernameResponse is the response returned when requesting
+// a user by their username.
+type GetUserByUsernameResponse struct {
+	RenderableUser
+}
+
+var _ render.Renderer = (*GetUserByUsernameResponse)(nil)

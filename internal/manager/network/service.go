@@ -2,6 +2,7 @@ package network
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"regexp"
 	"time"
@@ -19,12 +20,14 @@ var (
 type Service struct {
 	// TODO: replace this with a database
 	networks []Network
+	db       *sql.DB
 }
 
 // NewService creates a new network service.
-func NewService() *Service {
+func NewService(db *sql.DB) *Service {
 	return &Service{
 		networks: nil,
+		db:       db,
 	}
 }
 
@@ -76,6 +79,7 @@ func (service *Service) CreateNetwork(
 	}
 
 	service.networks = append(service.networks, network)
+	// TODO: write to RDS here
 
 	return &network, nil
 }

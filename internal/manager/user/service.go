@@ -2,28 +2,36 @@ package user
 
 import (
 	"context"
+	"database/sql"
+	_ "embed"
 	"fmt"
 	"regexp"
 	"time"
 
 	"github.com/durandj/ley/internal/manager/errortypes"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 var (
 	userNameRegex = regexp.MustCompile(`^\w[-\w_ ']+$`)
+
+	//go:embed create_user.sql
+	createUserSQL string
+
+	//go:embed get_user_by_username.sql
+	getUserByUsernameSQL string
 )
 
 // Service is a service for working with user objects.
 type Service struct {
-	// TODO: replace this with a DB for persistence
-	users []User
+	db *sql.DB
 }
 
 // NewService creates a new user service.
-func NewService() *Service {
+func NewService(db *sql.DB) *Service {
 	return &Service{
-		users: nil,
+		db: db,
 	}
 }
 
@@ -50,24 +58,45 @@ func (service *Service) CreateUser(
 		return nil, errortypes.NewWrappedValidationError(err, "Unable to create user: %v", err)
 	}
 
-	// TODO: validate name is unique
-	for _, user := range service.users {
-		if user.Username() == opts.Name {
-			return nil, errortypes.NewValidationError("User name is already taken")
-		}
-	}
-
 	creationTime := time.Now().UTC()
 
-	user := User{
-		id:         uuid.NewString(),
-		username:   opts.Name,
-		status:     StatusActive,
-		createdOn:  creationTime,
-		modifiedOn: creationTime,
-	}
+	var user User
+	err := service.db.QueryRowContext(
+		ctx,
+		createUserSQL,
+		uuid.NewString(),
+		opts.Name,
+		StatusActive,
+		creationTime,
+	).Scan(
+		&user.id,
+		&user.username,
+		&user.status,
+		&user.createdOn,
+		&user.modifiedOn,
+	)
 
-	service.users = append(service.users, user)
+	if err != nil {
+		if pqErr, ok := err.(*pq.Error); ok {
+			errorName := pqErr.Code.Name()
+			constraint := pqErr.Constraint
+			if errorName == "unique_violation" && constraint == "users_username_key" {
+				return nil, errortypes.NewValidationError("Username is already taken")
+			}
+
+			return nil, errortypes.SystemError{
+				SafeMessage:   "Unable to create new user due to a system error",
+				UnsafeMessage: "Unable to create new user due to a system error",
+				WrappedError:  err,
+			}
+		}
+
+		return nil, errortypes.SystemError{
+			SafeMessage:   "Unable to create new user due to a system error",
+			UnsafeMessage: "Unable to create new user due to a system error",
+			WrappedError:  err,
+		}
+	}
 
 	return &user, nil
 }
@@ -75,7 +104,37 @@ func (service *Service) CreateUser(
 // GetUserByUsername fetches a user by their username.
 func (service *Service) GetUserByUsername(
 	ctx context.Context,
-	name string,
+	username string,
 ) (*User, error) {
-	return nil, fmt.Errorf("Not implemented")
+	var user User
+	err := service.db.QueryRowContext(
+		ctx,
+		getUserByUsernameSQL,
+		username,
+	).Scan(
+		&user.id,
+		&user.username,
+		&user.status,
+		&user.createdOn,
+		&user.modifiedOn,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errortypes.NotFoundError{
+				UserError: errortypes.UserError{
+					SafeMessage:  "Could not find a user with that name",
+					WrappedError: err,
+				},
+			}
+		}
+
+		return nil, errortypes.SystemError{
+			SafeMessage:   "Unable to get user by username due to a system error",
+			UnsafeMessage: "Unable to get user by username due to a system error",
+			WrappedError:  err,
+		}
+	}
+
+	return &user, nil
 }

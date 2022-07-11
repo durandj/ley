@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS Users (
+    ID          VARCHAR(255) PRIMARY KEY,
+    Username    VARCHAR(64) UNIQUE,
+    Status      VARCHAR(16),
+    CreatedOn   TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    ModifiedOn  TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE OR REPLACE FUNCTION update_user_modified_on_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.ModifiedOn = now();
+
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE OR REPLACE TRIGGER UsersUpdateModifiedOn AFTER INSERT OR UPDATE
+ON Users
+FOR EACH ROW EXECUTE PROCEDURE update_user_modified_on_timestamp()
+;
